@@ -196,7 +196,7 @@ void display_customers_inorder(Customer *root) {
 
 // Display Customers (Menu option helper)
 void view_customers() {
-    printf("\n--- Customers List (BST In-Order Traversal - %d Total) ---\n", customerCount);
+    printf("\n--- Customers List (%d Total) ---\n", customerCount);
     if (customerRoot == NULL) {
         printf("Error: No customers found.\n");
         return;
