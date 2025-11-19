@@ -1,679 +1,402 @@
+//Version 2
 #include "crm.h"
 
-// -------------------------------------------------------------
-// GLOBAL VARIABLE DEFINITIONS (exactly one definition allowed)
-// -------------------------------------------------------------
-Customer *customerRoot = NULL;
+// --- Global Data ---
+Customer *customerRoot = NULL; 
 int customerCount = 0;
-
-Quote *quoteHead = NULL;
+Quote *quoteHead = NULL; 
 int quoteCount = 0;
-
-Order *orderFront = NULL;
-Order *orderRear = NULL;
+Order *orderFront = NULL; 
+Order *orderRear = NULL;  
 int orderCount = 0;
-
-Contract *contractHead = NULL;
+Contract *contractHead = NULL; 
 int contractCount = 0;
 
+// IDs
 int nextCustomerId = 1000;
 int nextQuoteId = 2000;
-int nextOrderId = 4000;
 int nextContractId = 3000;
+int nextOrderId = 4000;
 
-
-// -------------------------------------------------------------
-// UTILITY FUNCTIONS
-// -------------------------------------------------------------
-
+// --- Utilities ---
 void press_enter_to_continue() {
-    printf("\nPress [Enter] to return to the menu...");
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-    getchar();
+    printf("\n> Press [Enter] to continue...");
+    while (getchar() != '\n'); 
+    getchar(); 
 }
 
 bool validate_email(const char *email) {
-    int atCount = 0;
-    int dotAfterAt = 0;
-    int atPosition = -1;
-    int len = strlen(email);
-
-    if (len < 5) return false; // very basic minimum check
-
+    int atCount = 0, dotAfterAt = 0, atPos = -1, len = strlen(email);
+    if (len < 5) return false;
     for (int i = 0; i < len; i++) {
-        if (email[i] == '@') {
-            atCount++;
-            atPosition = i;
-        }
-        if (atCount == 1 && email[i] == '.' && i > atPosition) {
-            dotAfterAt = 1;
-        }
+        if (email[i] == '@') { atCount++; atPos = i; }
+        if (atCount == 1 && email[i] == '.' && i > atPos) dotAfterAt = 1;
     }
-
-    if (atCount != 1 || !dotAfterAt)
-        return false;
-
-    if (email[0] == '@' || email[0] == '.' ||
-        email[len - 1] == '@' || email[len - 1] == '.')
-        return false;
-
-    return true;
+    return (atCount == 1 && dotAfterAt && email[0] != '@' && email[len-1] != '.');
 }
 
 bool validate_date(const char *date) {
-    int day, month, year;
-
-    if (strlen(date) != 10 || date[2] != '-' || date[5] != '-')
-        return false;
-
-    for (int i = 0; i < 10; i++) {
-        if (i != 2 && i != 5 && !isdigit(date[i]))
-            return false;
-    }
-
-    if (sscanf(date, "%d-%d-%d", &day, &month, &year) != 3)
-        return false;
-
-    if (year < 1900 || year > 2100) return false;
-    if (month < 1 || month > 12) return false;
-    if (day < 1 || day > 31) return false;
-
-    int daysInMonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
-
-    if ((year % 4 == 0 && year % 100 != 0) ||
-        (year % 400 == 0))
-        daysInMonth[1] = 29;
-
-    if (day > daysInMonth[month - 1])
-        return false;
-
-    return true;
+    int d, m, y;
+    if (strlen(date) != 10 || date[2] != '-' || date[5] != '-') return false;
+    if (sscanf(date, "%d-%d-%d", &d, &m, &y) != 3) return false;
+    return (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31);
 }
 
-
-// -------------------------------------------------------------
-// CUSTOMER BST FUNCTIONS
-// -------------------------------------------------------------
-
+// --- BST Logic ---
 Customer* insert_customer_node(Customer* root, Customer* newCustomer) {
     if (root == NULL) {
-        newCustomer->left = NULL;
-        newCustomer->right = NULL;
-        return newCustomer;
+        newCustomer->left = NULL; newCustomer->right = NULL; return newCustomer;
     }
-
-    if (newCustomer->customerId < root->customerId) {
-        root->left = insert_customer_node(root->left, newCustomer);
-    }
-    else if (newCustomer->customerId > root->customerId) {
-        root->right = insert_customer_node(root->right, newCustomer);
-    }
+    if (newCustomer->customerId < root->customerId) root->left = insert_customer_node(root->left, newCustomer);
+    else if (newCustomer->customerId > root->customerId) root->right = insert_customer_node(root->right, newCustomer);
     return root;
 }
 
 Customer* find_customer(int id) {
-    Customer *current = customerRoot;
-
-    while (current != NULL) {
-        if (current->customerId == id)
-            return current;
-
-        if (id < current->customerId)
-            current = current->left;
-        else
-            current = current->right;
+    Customer *curr = customerRoot;
+    while (curr != NULL) {
+        if (curr->customerId == id) return curr;
+        else if (id < curr->customerId) curr = curr->left;
+        else curr = curr->right;
     }
     return NULL;
-}
-
-void display_customers_inorder(Customer *root) {
-    if (root != NULL) {
-        display_customers_inorder(root->left);
-
-        printf("%d\t%s\t\t%s\t%s\n",
-               root->customerId,
-               root->name,
-               root->email,
-               root->company);
-
-        display_customers_inorder(root->right);
-    }
-}
-
-void view_customers() {
-    printf("\n--- Customers List (BST In-Order Traversal - %d Total) ---\n",
-           customerCount);
-
-    if (customerRoot == NULL) {
-        printf("Error: No customers found.\n");
-        return;
-    }
-
-    printf("ID\tName\t\tEmail\t\tCompany\n");
-    printf("----------------------------------------------------------\n");
-
-    display_customers_inorder(customerRoot);
 }
 
 void free_customer_bst(Customer *root) {
     if (root == NULL) return;
-    free_customer_bst(root->left);
-    free_customer_bst(root->right);
-    free(root);
+    free_customer_bst(root->left); free_customer_bst(root->right); free(root);
 }
-
-
-// -------------------------------------------------------------
-// INITIAL TEST DATA
-// -------------------------------------------------------------
-
-void initialize_test_data() {
-    Customer *initialCustomer = malloc(sizeof(Customer));
-    if (initialCustomer == NULL) {
-        printf("Error: Memory allocation failed during initialization.\n");
-        return;
-    }
-
-    initialCustomer->customerId = nextCustomerId++;
-    strcpy(initialCustomer->name, "Acme Corp");
-    strcpy(initialCustomer->email, "contact@acme.com");
-    strcpy(initialCustomer->company, "Acme Inc.");
-    initialCustomer->left = NULL;
-    initialCustomer->right = NULL;
-
-    customerRoot = initialCustomer;
-    customerCount++;
-
-    printf("System initialized with one test customer (ID: 1000).\n");
-}
-
-
-// -------------------------------------------------------------
-// ADD CUSTOMER FUNCTION
-// -------------------------------------------------------------
-
-void add_customer() {
-    Customer *newCustomer = malloc(sizeof(Customer));
-    if (newCustomer == NULL) {
-        printf("Error: Memory allocation failed.\n");
-        return;
-    }
-
-    newCustomer->customerId = nextCustomerId++;
-
-    printf("\n--- Add New Customer ---\n");
-
-    printf("Enter Name: ");
-    scanf(" %[^\n]s", newCustomer->name);
-
-    do {
-        printf("Enter Email: ");
-        scanf(" %[^\n]s", newCustomer->email);
-        if (!validate_email(newCustomer->email))
-            printf("Invalid email format! Try again.\n");
-    } while (!validate_email(newCustomer->email));
-
-    printf("Enter Company: ");
-    scanf(" %[^\n]s", newCustomer->company);
-
-    customerRoot = insert_customer_node(customerRoot, newCustomer);
-    customerCount++;
-
-    printf("Customer added successfully! ID: %d\n", newCustomer->customerId);
-}
-
-// -------------------------------------------------------------
-// QUOTE FUNCTIONS
-// -------------------------------------------------------------
 
 Quote* find_quote_node(int id) {
-    Quote *current = quoteHead;
-    while (current != NULL) {
-        if (current->quoteId == id) {
-            return current;
-        }
-        current = current->next;
-    }
+    Quote *curr = quoteHead;
+    while (curr) { if (curr->quoteId == id) return curr; curr = curr->next; }
     return NULL;
 }
 
-void create_sales_quote() {
-    Quote *newQuote = malloc(sizeof(Quote));
-    if (newQuote == NULL) {
-        printf("Error: Memory allocation failed.\n");
-        return;
-    }
-
-    newQuote->quoteId = nextQuoteId++;
-
-    printf("\n--- Create New Sales Quote ---\n");
-    printf("Enter Customer ID: ");
-    if (scanf("%d", &newQuote->customerId) != 1) {
-        printf("Invalid input.\n");
-        free(newQuote);
-        while (getchar() != '\n');
-        return;
-    }
-
-    // Verify customer exists
-    if (find_customer(newQuote->customerId) == NULL) {
-        printf("Error: Customer ID %d not found.\n", newQuote->customerId);
-        free(newQuote);
-        return;
-    }
-
-    printf("Enter Quote Amount: $");
-    if (scanf("%lf", &newQuote->amount) != 1) {
-        printf("Invalid input.\n");
-        free(newQuote);
-        while (getchar() != '\n');
-        return;
-    }
-
-    do {
-        printf("Enter Date (DD-MM-YYYY): ");
-        scanf(" %s", newQuote->date);
-        if (!validate_date(newQuote->date))
-            printf("Invalid date format! Please use DD-MM-YYYY\n");
-    } while (!validate_date(newQuote->date));
-
-    newQuote->accepted = false;
-
-    // Insert at head of quote linked list
-    newQuote->next = quoteHead;
-    quoteHead = newQuote;
-    quoteCount++;
-
-    printf("Sales Quote created successfully! ID: %d\n", newQuote->quoteId);
+// --- Initialization ---
+void initialize_test_data() {
+    Customer *c = (Customer*)malloc(sizeof(Customer));
+    c->customerId = nextCustomerId++;
+    strcpy(c->name, "Acme Corp"); strcpy(c->email, "admin@acme.com");
+    strcpy(c->company, "Acme Inc."); strcpy(c->type, "Company");
+    c->loyaltyPoints = 150; // High points to test display
+    c->left = NULL; c->right = NULL;
+    customerRoot = c; customerCount++;
+    printf("System Initialized.\n");
 }
 
-void view_sales_quotes() {
-    printf("\n--- Sales Quotes List (%d Total) ---\n", quoteCount);
-    if (quoteHead == NULL) {
-        printf("Error: No quotes found.\n");
-        return;
-    }
-    printf("ID\tCust ID\tAmount\tDate\t\tAccepted\n");
-    printf("--------------------------------------------------\n");
+// ==========================================
+//      ADMIN / BUSINESS FEATURES
+// ==========================================
 
-    Quote *current = quoteHead;
-    while (current != NULL) {
-        printf("%d\t%d\t$%.2f\t%s\t%s\n",
-               current->quoteId,
-               current->customerId,
-               current->amount,
-               current->date,
-               current->accepted ? "Yes" : "No");
-        current = current->next;
+void add_customer() {
+    Customer *nc = (Customer*)malloc(sizeof(Customer));
+    nc->customerId = nextCustomerId++;
+    nc->loyaltyPoints = 0; 
+    
+    printf("\n--- New Customer Registration ---\n");
+    int type;
+    printf("1. Company  2. Individual: ");
+    scanf("%d", &type);
+    strcpy(nc->type, (type == 1) ? "Company" : "Individual");
+
+    printf("Name: "); scanf(" %[^\n]s", nc->name);
+    do { printf("Email: "); scanf(" %[^\n]s", nc->email); } while (!validate_email(nc->email));
+    
+    if (type == 1) { printf("Company Name: "); scanf(" %[^\n]s", nc->company); }
+    else strcpy(nc->company, "Individual");
+
+    customerRoot = insert_customer_node(customerRoot, nc);
+    customerCount++;
+    printf("Success! Customer ID is: [ %d ]\n", nc->customerId);
+}
+
+void display_customers_recursive(Customer *root) {
+    if (root != NULL) {
+        display_customers_recursive(root->left);
+        printf("%d\t%-15s\t%s\t\t%d pts\n", root->customerId, root->name, root->type, root->loyaltyPoints);
+        display_customers_recursive(root->right);
     }
 }
 
+void view_customers() {
+    printf("\n--- Customer Database ---\n");
+    printf("ID\tName\t\tType\t\tLoyalty\n");
+    printf("------------------------------------------------\n");
+    display_customers_recursive(customerRoot);
+}
 
-// -------------------------------------------------------------
-// ORDER (QUEUE) FUNCTIONS
-// -------------------------------------------------------------
+// Common order logic used by Admin and Customer
+void internal_create_order(int custId) {
+    Customer *c = find_customer(custId);
+    if (!c) { printf("Customer not found.\n"); return; }
 
-void create_order() {
-    Order *newOrder = malloc(sizeof(Order));
-    if (newOrder == NULL) {
-        printf("Error: Memory allocation failed.\n");
-        return;
+    Order *no = (Order*)malloc(sizeof(Order));
+    no->orderId = nextOrderId++;
+    no->customerId = custId;
+    no->next = NULL;
+
+    printf("\n--- New Order for %s ---\n", c->name);
+    printf("Current Points: %d\n", c->loyaltyPoints);
+    
+    double discount = 0;
+    if (c->loyaltyPoints > LOYALTY_THRESHOLD) {
+        printf(">> LOYALTY REWARD AVAILABLE! <<\n");
+        printf("Applying $%.2f discount.\n", DISCOUNT_AMOUNT);
+        discount = DISCOUNT_AMOUNT;
+        c->loyaltyPoints -= LOYALTY_THRESHOLD;
     }
 
-    newOrder->orderId = nextOrderId++;
-    newOrder->next = NULL;
+    printf("Product Name: "); scanf(" %[^\n]s", no->product);
+    printf("Total Amount: $"); scanf("%lf", &no->totalAmount);
 
-    printf("\n--- Create New Order ---\n");
-    printf("Enter Seller ID: ");
-    if (scanf("%d", &newOrder->sellerId) != 1) {
-        printf("Invalid input.\n");
-        free(newOrder);
-        while (getchar() != '\n');
-        return;
+    if (discount > 0) {
+        if (no->totalAmount > discount) no->totalAmount -= discount;
+        else {
+            printf("Order value too low for discount. Points returned.\n");
+            c->loyaltyPoints += LOYALTY_THRESHOLD;
+        }
     }
 
-    printf("Enter Total Amount: $");
-    if (scanf("%lf", &newOrder->totalAmount) != 1) {
-        printf("Invalid input.\n");
-        free(newOrder);
-        while (getchar() != '\n');
-        return;
-    }
+    do { printf("Date (DD-MM-YYYY): "); scanf(" %s", no->date); } while (!validate_date(no->date));
+    strcpy(no->status, "Pending");
 
-    printf("Enter Product Name: ");
-    scanf(" %[^\n]s", newOrder->product);
-
-    do {
-        printf("Enter Date (DD-MM-YYYY): ");
-        scanf(" %s", newOrder->date);
-        if (!validate_date(newOrder->date))
-            printf("Invalid date format! Please use DD-MM-YYYY\n");
-    } while (!validate_date(newOrder->date));
-
-    strcpy(newOrder->status, "Pending");
-
-    // Enqueue
-    if (orderRear == NULL) {
-        orderFront = newOrder;
-        orderRear = newOrder;
-    } else {
-        orderRear->next = newOrder;
-        orderRear = newOrder;
-    }
+    if (!orderFront) { orderFront = no; orderRear = no; }
+    else { orderRear->next = no; orderRear = no; }
     orderCount++;
+    printf("Order Placed! ID: %d | Final Pay: $%.2f\n", no->orderId, no->totalAmount);
+}
 
-    printf("Order created and added to queue! ID: %d\n", newOrder->orderId);
+void create_order_admin() {
+    int id;
+    printf("Enter Customer ID: ");
+    scanf("%d", &id);
+    internal_create_order(id);
 }
 
 void process_order() {
-    if (orderFront == NULL) {
-        printf("\n--- Process Order ---\n");
-        printf("Error: The order queue is empty. Nothing to process.\n");
-        return;
-    }
-
+    if (!orderFront) { printf("No pending orders.\n"); return; }
     Order *temp = orderFront;
     orderFront = orderFront->next;
-    if (orderFront == NULL)
-        orderRear = NULL;
+    if (!orderFront) orderRear = NULL;
 
-    printf("\n--- Order Processed ---\n");
-    printf("Order ID: %d (Seller ID: %d)\n", temp->orderId, temp->sellerId);
-    printf("Product: %s | Amount: $%.2f\n", temp->product, temp->totalAmount);
-    printf("Order marked as COMPLETED and removed from the queue.\n");
-
+    printf("\n--- Processing Order #%d ---\n", temp->orderId);
+    Customer *c = find_customer(temp->customerId);
+    if (c) {
+        int earned = (int)(temp->totalAmount / 10);
+        c->loyaltyPoints += earned;
+        printf("Customer %s earned %d Loyalty Points.\n", c->name, earned);
+    }
+    printf("Order marked COMPLETED.\n");
     free(temp);
     orderCount--;
 }
 
-void view_orders() {
-    printf("\n--- Orders Queue (%d Total) ---\n", orderCount);
-    if (orderFront == NULL) {
-        printf("Error: No orders in the queue.\n");
-        return;
-    }
-    printf("ID\tSeller ID\tAmount\t\tProduct\t\tStatus\n");
-    printf("----------------------------------------------------------------\n");
-
-    Order *current = orderFront;
-    while (current != NULL) {
-        printf("%d\t%d\t\t$%.2f\t\t%s\t\t%s\n",
-               current->orderId,
-               current->sellerId,
-               current->totalAmount,
-               current->product,
-               current->status);
-        current = current->next;
+void view_all_orders() {
+    printf("\n--- Active Order Queue ---\n");
+    Order *curr = orderFront;
+    while (curr) {
+        printf("#%d | Cust: %d | Item: %s | $%.2f | %s\n", 
+            curr->orderId, curr->customerId, curr->product, curr->totalAmount, curr->status);
+        curr = curr->next;
     }
 }
 
+void create_sales_quote() {
+    Quote *nq = (Quote*)malloc(sizeof(Quote));
+    nq->quoteId = nextQuoteId++;
+    printf("\n--- Generate Quote ---\n");
+    printf("Customer ID: "); scanf("%d", &nq->customerId);
+    Customer *c = find_customer(nq->customerId);
+    if(!c) { printf("Not found.\n"); free(nq); return; }
 
-// -------------------------------------------------------------
-// CONTRACT FUNCTION
-// -------------------------------------------------------------
+    printf("Item: "); scanf(" %[^\n]s", nq->itemName);
+    printf("Amount: $"); scanf("%lf", &nq->amount);
+    do { printf("Date: "); scanf(" %s", nq->date); } while(!validate_date(nq->date));
+    
+    nq->accepted = false;
+    nq->next = quoteHead; quoteHead = nq; quoteCount++;
+    printf("Quote #%d Generated.\n", nq->quoteId);
+}
+
+void view_sales_quotes() {
+    printf("\n--- Sales Quotes ---\n");
+    Quote *curr = quoteHead;
+    while(curr) {
+        printf("#%d | Cust: %d | %s | $%.2f | Accepted: %s\n", 
+            curr->quoteId, curr->customerId, curr->itemName, curr->amount, curr->accepted?"Yes":"No");
+        curr = curr->next;
+    }
+}
 
 void send_contract() {
-    if (quoteHead == NULL) {
-        printf("\n--- Send Contract ---\n");
-        printf("Error: No quotes available. Please create a quote first.\n");
-        return;
-    }
-
-    Contract *newContract = malloc(sizeof(Contract));
-    if (newContract == NULL) {
-        printf("Error: Memory allocation failed.\n");
-        return;
-    }
-
     int qId;
-    printf("\n--- Send Contract ---\n");
-    printf("Enter Quote ID to base contract on: ");
-    if (scanf("%d", &qId) != 1) {
-        printf("Invalid input.\n");
-        free(newContract);
-        while (getchar() != '\n');
-        return;
-    }
+    printf("Enter Quote ID to finalize: "); scanf("%d", &qId);
+    Quote *q = find_quote_node(qId);
+    if (!q) { printf("Quote not found.\n"); return; }
 
-    Quote *associatedQuote = find_quote_node(qId);
-    if (associatedQuote != NULL) {
-        newContract->contractId = nextContractId++;
-        newContract->relatedQuoteId = qId;
-        newContract->customerId = associatedQuote->customerId;
-
-        char temp_id[12];
-        sprintf(temp_id, "%d", newContract->contractId);
-        strcpy(newContract->documentPath, "doc/contract_");
-        strcat(newContract->documentPath, temp_id);
-        strcat(newContract->documentPath, ".txt");
-        newContract->sent = true;
-
-        newContract->next = contractHead;
-        contractHead = newContract;
-        contractCount++;
-
-        printf("Contract (ID: %d) successfully generated and 'sent' to customer %d.\n",
-               newContract->contractId, newContract->customerId);
-
-        associatedQuote->accepted = true;
-        printf("Associated Quote (ID: %d) marked as ACCEPTED.\n", qId);
-    } else {
-        printf("Error: Quote ID not found.\n");
-        free(newContract);
+    Contract *nc = (Contract*)malloc(sizeof(Contract));
+    nc->contractId = nextContractId++;
+    nc->customerId = q->customerId;
+    nc->relatedQuoteId = qId;
+    nc->sent = true;
+    nc->next = contractHead; contractHead = nc; contractCount++;
+    
+    q->accepted = true;
+    printf("Contract #%d sent to Customer %d.\n", nc->contractId, nc->customerId);
+    
+    Customer *c = find_customer(q->customerId);
+    if (c) {
+        int pts = (int)(q->amount / 10);
+        c->loyaltyPoints += pts;
+        printf("Loyalty Update: +%d points.\n", pts);
     }
 }
 
-
-// -------------------------------------------------------------
-// ANALYTICS
-// -------------------------------------------------------------
+// --- ANALYTICS WITH LOYALTY BREAKDOWN ---
+void print_loyalty_list(Customer *root) {
+    if (root) {
+        print_loyalty_list(root->left);
+        printf("   - ID %d (%s): \t%d Points\n", root->customerId, root->name, root->loyaltyPoints);
+        print_loyalty_list(root->right);
+    }
+}
 
 void show_analytics() {
-    printf("\n--- CRM Analytics Dashboard ---\n");
+    printf("\n========================================\n");
+    printf("      EXECUTIVE ANALYTICS DASHBOARD\n");
+    printf("========================================\n");
+    printf("1. RECORDS:\n");
+    printf("   - Customers: %d\n   - Quotes: %d\n   - Orders: %d\n", customerCount, quoteCount, orderCount);
 
-    printf("Total Records:\n");
-    printf("  - Customers: %d\n", customerCount);
-    printf("  - Sales Quotes: %d\n", quoteCount);
-    printf("  - Orders in Queue: %d\n", orderCount);
-    printf("  - Contracts Sent: %d\n", contractCount);
+    // Sales Calc
+    double totalPipe = 0, closedRev = 0;
+    Quote *q = quoteHead;
+    while(q) {
+        totalPipe += q->amount;
+        if(q->accepted) closedRev += q->amount;
+        q = q->next;
+    }
+    printf("\n2. FINANCIALS:\n");
+    printf("   - Pipeline: $%.2f\n   - Revenue:  $%.2f\n", totalPipe, closedRev);
 
-    int acceptedQuotes = 0;
-    double totalQuoteValue = 0.0;
-    double acceptedQuoteValue = 0.0;
+    // Loyalty Per Customer
+    printf("\n3. LOYALTY POINTS PER CUSTOMER:\n");
+    if (customerRoot == NULL) printf("   (No customers yet)\n");
+    else print_loyalty_list(customerRoot);
 
-    Quote *currentQuote = quoteHead;
-    while (currentQuote != NULL) {
-        totalQuoteValue += currentQuote->amount;
-        if (currentQuote->accepted) {
-            acceptedQuotes++;
-            acceptedQuoteValue += currentQuote->amount;
+    printf("========================================\n");
+}
+
+// ==========================================
+//      CUSTOMER PORTAL FEATURES
+// ==========================================
+
+void customer_view_profile(int myId) {
+    Customer *c = find_customer(myId);
+    printf("\n--- MY PROFILE ---\n");
+    printf("Name: %s\n", c->name);
+    printf("Type: %s\n", c->type);
+    printf("Loyalty Points Balance: [ %d ]\n", c->loyaltyPoints);
+    if (c->loyaltyPoints > LOYALTY_THRESHOLD) 
+        printf(">> You have a discount available on your next order! <<\n");
+    else
+        printf(">> Earn %d more points for a discount.\n", LOYALTY_THRESHOLD - c->loyaltyPoints);
+}
+
+void customer_view_my_orders(int myId) {
+    printf("\n--- MY ORDER HISTORY ---\n");
+    Order *curr = orderFront;
+    bool found = false;
+    while (curr) {
+        if (curr->customerId == myId) {
+            printf("Order #%d | %s | $%.2f | %s\n", 
+                curr->orderId, curr->product, curr->totalAmount, curr->status);
+            found = true;
         }
-        currentQuote = currentQuote->next;
+        curr = curr->next;
+    }
+    if (!found) printf("No orders found.\n");
+}
+
+void customer_portal() {
+    int id;
+    printf("\n=== CUSTOMER LOGIN ===\n");
+    printf("Enter your Customer ID: ");
+    if (scanf("%d", &id) != 1) { while(getchar()!='\n'); return; }
+
+    Customer *c = find_customer(id);
+    if (c == NULL) {
+        printf("Error: Customer ID not found. Please register with Business Admin first.\n");
+        return;
     }
 
-    double conversionRate = (quoteCount > 0) ? ((double)acceptedQuotes / quoteCount) * 100.0 : 0.0;
-
-    printf("\nSales Performance:\n");
-    printf("  - Quotes Accepted: %d\n", acceptedQuotes);
-    printf("  - Quote Conversion Rate: %.2f%%\n", conversionRate);
-    printf("  - Total Quoted Value: $%.2f\n", totalQuoteValue);
-    printf("  - Total Accepted Value (Potential Revenue): $%.2f\n", acceptedQuoteValue);
-
-    double totalOrderRevenue = 0.0;
-    Order *currentOrder = orderFront;
-    while (currentOrder != NULL) {
-        totalOrderRevenue += currentOrder->totalAmount;
-        currentOrder = currentOrder->next;
-    }
-
-    printf("\nOrder Value:\n");
-    printf("  - Total Pending Order Revenue: $%.2f\n", totalOrderRevenue);
-
-    double orderProfit = totalOrderRevenue * PROFIT_MARGIN;
-    double potentialProfit = acceptedQuoteValue * PROFIT_MARGIN;
-
-    printf("\nProfit Analysis (Based on %.0f%% Margin):\n", PROFIT_MARGIN * 100);
-    printf("  - Pending Order Profit: $%.2f\n", orderProfit);
-    printf("  - Potential Profit (From Accepted Quotes): $%.2f\n", potentialProfit);
-    printf("  - Total Cost of Goods Sold (COGS) in Queue: $%.2f\n", totalOrderRevenue * (1.0 - PROFIT_MARGIN));
-}
-
-// -------------------------------------------------------------
-// MENU HANDLERS & MAIN MENU DISPLAY
-// -------------------------------------------------------------
-
-void display_main_menu() {
-    printf("\n====================================\n");
-    printf("  Simple C-CRM Command Line Platform\n");
-    printf("====================================\n");
-    printf("1. Customer Management\n");
-    printf("2. Sales Quotes\n");
-    printf("3. Send Contract (Simulate)\n");
-    printf("4. Order Management\n");
-    printf("5. Show Analytics\n");
-    printf("0. Exit\n");
-    printf("------------------------------------\n");
-    printf("Enter your choice: ");
-}
-
-void handle_customer_menu() {
+    printf("Welcome back, %s!\n", c->name);
     int choice;
     do {
-        printf("\n--- Customer Management ---\n");
-        printf("1. Add New Customer (BST Insert)\n");
-        printf("2. View All Customers (BST In-Order)\n");
-        printf("3. Back to Main Menu\n");
-        printf("Enter choice: ");
-        if (scanf("%d", &choice) != 1) {
-            choice = 0;
-            while (getchar() != '\n');
-        }
+        printf("\n--- CUSTOMER MENU (%s) ---\n", c->name);
+        printf("1. View My Profile & Points\n");
+        printf("2. Place New Order\n");
+        printf("3. View My Orders\n");
+        printf("0. Logout\n");
+        printf("Choice: ");
+        scanf("%d", &choice);
 
-        switch (choice) {
-            case 1:
-                add_customer();
+        switch(choice) {
+            case 1: customer_view_profile(id); press_enter_to_continue(); break;
+            case 2: internal_create_order(id); press_enter_to_continue(); break;
+            case 3: customer_view_my_orders(id); press_enter_to_continue(); break;
+            case 0: printf("Logging out...\n"); break;
+            default: printf("Invalid.\n");
+        }
+    } while (choice != 0);
+}
+
+// ==========================================
+//      ADMIN PORTAL MENU
+// ==========================================
+void admin_portal() {
+    int choice;
+    do {
+        printf("\n=== BUSINESS ADMIN DASHBOARD ===\n");
+        printf("1. Manage Customers\n");
+        printf("2. Sales Quotes\n");
+        printf("3. Contracts\n");
+        printf("4. Manage Orders\n");
+        printf("5. Analytics & Loyalty Report\n");
+        printf("0. Logout\n");
+        printf("Choice: ");
+        scanf("%d", &choice);
+
+        switch(choice) {
+            case 1: 
+                printf("\n[1] Add Customer  [2] View All: ");
+                int c1; scanf("%d", &c1);
+                if(c1==1) add_customer(); else view_customers();
                 press_enter_to_continue();
                 break;
             case 2:
-                view_customers();
+                printf("\n[1] Create Quote  [2] View All: ");
+                int c2; scanf("%d", &c2);
+                if(c2==1) create_sales_quote(); else view_sales_quotes();
                 press_enter_to_continue();
                 break;
-            case 3:
-                return;
-            default:
-                printf("Invalid choice. Please try again.\n");
-        }
-    } while (choice != 3);
-}
-
-void handle_quotes_menu() {
-    int choice;
-    do {
-        printf("\n--- Sales Quotes Management ---\n");
-        printf("1. Create New Sales Quote\n");
-        printf("2. View All Sales Quotes\n");
-        printf("3. Back to Main Menu\n");
-        printf("Enter choice: ");
-        if (scanf("%d", &choice) != 1) {
-            choice = 0;
-            while (getchar() != '\n');
-        }
-
-        switch (choice) {
-            case 1:
-                create_sales_quote();
-                press_enter_to_continue();
-                break;
-            case 2:
-                view_sales_quotes();
-                press_enter_to_continue();
-                break;
-            case 3:
-                return;
-            default:
-                printf("Invalid choice. Please try again.\n");
-        }
-    } while (choice != 3);
-}
-
-void handle_orders_menu() {
-    int choice;
-    do {
-        printf("\n--- Order Management ---\n");
-        printf("1. Create New Order\n");
-        printf("2. View All Orders\n");
-        printf("3. Process Oldest Order\n");
-        printf("4. Back to Main Menu\n");
-        printf("Enter choice: ");
-        if (scanf("%d", &choice) != 1) {
-            choice = 0;
-            while (getchar() != '\n');
-        }
-
-        switch (choice) {
-            case 1:
-                create_order();
-                press_enter_to_continue();
-                break;
-            case 2:
-                view_orders();
-                press_enter_to_continue();
-                break;
-            case 3:
-                process_order();
-                press_enter_to_continue();
-                break;
+            case 3: send_contract(); press_enter_to_continue(); break;
             case 4:
-                return;
-            default:
-                printf("Invalid choice. Please try again.\n");
+                printf("\n[1] Create Order [2] Process [3] View All: ");
+                int c4; scanf("%d", &c4);
+                if(c4==1) create_order_admin(); 
+                else if(c4==2) process_order(); 
+                else view_all_orders();
+                press_enter_to_continue();
+                break;
+            case 5: show_analytics(); press_enter_to_continue(); break;
+            case 0: printf("Returning to Role Selection...\n"); break;
+            default: printf("Invalid.\n");
         }
-    } while (choice != 4);
+    } while (choice != 0);
 }
-
-
-// -------------------------------------------------------------
-// MEMORY CLEANUP
-// -------------------------------------------------------------
 
 void free_all_memory() {
-    printf("Freeing allocated memory...\n");
-
-    // Free Customer BST
     free_customer_bst(customerRoot);
-    customerRoot = NULL;
-    customerCount = 0;
-
-    // Free Quote linked list
-    Quote *currentQuote = quoteHead;
-    while (currentQuote != NULL) {
-        Quote *temp = currentQuote;
-        currentQuote = currentQuote->next;
-        free(temp);
-    }
-    quoteHead = NULL;
-    quoteCount = 0;
-
-    // Free Order queue
-    Order *currentOrder = orderFront;
-    while (currentOrder != NULL) {
-        Order *temp = currentOrder;
-        currentOrder = currentOrder->next;
-        free(temp);
-    }
-    orderFront = orderRear = NULL;
-    orderCount = 0;
-
-    // Free Contract linked list
-    Contract *currentContract = contractHead;
-    while (currentContract != NULL) {
-        Contract *temp = currentContract;
-        currentContract = currentContract->next;
-        free(temp);
-    }
-    contractHead = NULL;
-    contractCount = 0;
-
-    printf("Memory freed successfully.\n");
 }
