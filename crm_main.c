@@ -1,54 +1,40 @@
 #include "crm.h"
 
 int main() {
-    int choice;
-
-    printf("Welcome to the C-CRM Simulator!\n");
+    int roleChoice;
     initialize_test_data();
 
     do {
-        display_main_menu();
-
-        if (scanf("%d", &choice) != 1) {
-            choice = -1;
-            while (getchar() != '\n');
+        printf("\n====================================\n");
+        printf("   C-CRM: LOYALTY EDITION v2.0\n");
+        printf("====================================\n");
+        printf("Who are you?\n");
+        printf("1. Business Admin\n");
+        printf("2. Customer\n");
+        printf("0. Close App\n");
+        printf("------------------------------------\n");
+        printf("Enter Role: ");
+        
+        if (scanf("%d", &roleChoice) != 1) {
+            roleChoice = -1;
+            while (getchar() != '\n'); 
         }
 
-        switch (choice) {
-            case 1:
-                handle_customer_menu();
+        switch (roleChoice) {
+            case 1: 
+                admin_portal(); 
                 break;
-
-            case 2:
-                handle_quotes_menu();
+            case 2: 
+                customer_portal(); 
                 break;
-
-            case 3:
-                send_contract();
-                press_enter_to_continue();
+            case 0: 
+                printf("Shutting down...\n"); 
+                free_all_memory(); 
                 break;
-
-            case 4:
-                handle_orders_menu();
-                break;
-
-            case 5:
-                show_analytics();
-                press_enter_to_continue();
-                break;
-
-            case 0:
-                printf("\nExiting C-CRM. Goodbye!\n");
-                free_all_memory();
-                break;
-
-            default:
-                printf("Invalid choice. Please enter a valid option.\n");
-                press_enter_to_continue();
-                break;
+            default: 
+                printf("Invalid selection.\n");
         }
-
-    } while (choice != 0);
+    } while (roleChoice != 0);
 
     return 0;
 }
